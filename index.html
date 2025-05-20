@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gaan Jasper & Pijke vandaag winnen?</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Courier New', monospace;
+      background: linear-gradient(to bottom right, #fefcea, #f1da36);
+      color: #1f1f1f;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+      padding: 1rem;
+      overflow: hidden;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      text-shadow: 1px 1px #fff;
+    }
+    .answer {
+      font-size: 3rem;
+      font-weight: bold;
+      margin-bottom: 2rem;
+      animation: pop 0.6s ease;
+    }
+    .scoreboard {
+      display: flex;
+      flex-direction: column;
+      background: #2e2e2e;
+      padding: 1rem 2rem;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+      margin-bottom: 1rem;
+    }
+    .row-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .team-label {
+      color: #fff;
+      font-weight: bold;
+      width: 120px;
+      text-align: right;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+    .bead {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #facc15;
+      box-shadow: inset 0 0 3px #000;
+    }
+    #tiebreak {
+      font-size: 1rem;
+      color: #444;
+      text-align: center;
+    }
+    @keyframes pop {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Gaan Jasper & Pijke vandaag winnen?</h1>
+  <div class="answer" id="answer">...</div>
+  <div class="scoreboard">
+    <div class="row-wrapper">
+      <div class="team-label">Daan & Kors</div>
+      <div class="row" id="row1"></div>
+    </div>
+    <div class="row-wrapper">
+      <div class="team-label">Jasper & Pijke</div>
+      <div class="row" id="row2"></div>
+    </div>
+  </div>
+  <div id="tiebreak"></div>
+  <canvas id="confetti-canvas" style="position:fixed;pointer-events:none;top:0;left:0;width:100%;height:100%;z-index:999;"></canvas>
+  <script>
+    const confetti = {
+      canvas: null,
+      ctx: null,
+      particles: [],
+      colors: ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"],
+      init() {
+        this.canvas = document.getElementById('confetti-canvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.resizeCanvas();
+        window.addEventListener('resize', () => this.resizeCanvas());
+      },
+      resizeCanvas() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+      },
+      start() {
+        this.particles = [];
+        for (let i = 0; i < 150; i++) {
+          this.particles.push(this.createParticle());
+        }
+        requestAnimationFrame(() => this.update());
+      },
+      createParticle() {
+        return {
+          x: Math.random() * this.canvas.width,
+          y: Math.random() * -this.canvas.height,
+          size: Math.random() * 8 + 2,
+          color: this.colors[Math.floor(Math.random() * this.colors.length)],
+          speedY: Math.random() * 3 + 2,
+          speedX: Math.random() * 2 - 1
+        };
+      },
+      update() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.particles.forEach(p => {
+          p.x += p.speedX;
+          p.y += p.speedY;
+          if (p.y > this.canvas.height) {
+            p.y = 0;
+            p.x = Math.random() * this.canvas.width;
+          }
+          this.ctx.fillStyle = p.color;
+          this.ctx.beginPath();
+          this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          this.ctx.fill();
+        });
+        requestAnimationFrame(() => this.update());
+      }
+    };
+    function getTodayKey() {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
+    }
+    function getDailyHash(input) {
+      let hash = 0;
+      for (let i = 0; i < input.length; i++) {
+        hash = (hash << 5) - hash + input.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
+    }
+    function getDeterministicAnswer() {
+      const hash = getDailyHash(getTodayKey());
+      return hash % 2 === 0 ? 'Ja' : 'Nee';
+    }
+    function generateSingleSetScore(answer) {
+      const base = getDailyHash(getTodayKey() + "_set");
+      const outcomes = [[6, 0], [6, 1], [6, 2], [6, 3], [6, 4], [7, 5], [7, 6]];
+      const index = base % outcomes.length;
+      let [a, b] = outcomes[index];
+      const pijkeJasperWin = answer === 'Ja';
+      const scoreA = pijkeJasperWin ? b : a;
+      const scoreB = pijkeJasperWin ? a : b;
+      let tiebreak = null;
+      if ((scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7)) {
+        const tiebreakPoints = 7 + (base % 5);
+        const loserPoints = Math.floor(Math.random() * 5) + 4;
+        tiebreak = `${tiebreakPoints}–${loserPoints}`;
+      }
+      return { scoreA, scoreB, tiebreak };
+    }
+    function generateGame() {
+      const answer = getDeterministicAnswer();
+      document.getElementById('answer').textContent = answer;
+      const { scoreA, scoreB, tiebreak } = generateSingleSetScore(answer);
+      document.getElementById('row1').innerHTML = '';
+      document.getElementById('row2').innerHTML = '';
+      for (let i = 0; i < scoreA; i++) {
+        const bead = document.createElement('div');
+        bead.className = 'bead';
+        document.getElementById('row1').appendChild(bead);
+      }
+      for (let i = 0; i < scoreB; i++) {
+        const bead = document.createElement('div');
+        bead.className = 'bead';
+        document.getElementById('row2').appendChild(bead);
+      }
+      document.getElementById('tiebreak').textContent = tiebreak ? `(Tiebreak: ${tiebreak})` : '';
+      if (answer === 'Ja') {
+        confetti.start();
+      }
+    }
+    confetti.init();
+    generateGame();
+  </script>
+</body>
+</html>
