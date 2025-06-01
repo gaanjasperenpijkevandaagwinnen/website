@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Score Invoeren - Jasper & Pijke</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(to bottom right, #fefcea, #f1da36);
+            color: #1f1f1f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            padding: 1.5rem;
+        }
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            text-shadow: 1px 1px #fff;
+        }
+        form {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px; /* Maximale breedte voor het formulier */
+        }
+        .form-group {
+            margin-bottom: 1.2rem;
+            text-align: left;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+        input[type="date"],
+        input[type="number"] {
+            width: calc(100% - 1rem); /* Volledige breedte minus padding */
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 1rem;
+            box-sizing: border-box; /* Zorgt dat padding binnen de width valt */
+        }
+        button[type="submit"] {
+            background-color: #2e2e2e;
+            color: #facc15;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%; /* Knop over volledige breedte */
+            margin-top: 1rem;
+        }
+        button[type="submit"]:hover {
+            background-color: #444;
+        }
+        button[type="submit"]:disabled {
+            background-color: #999;
+            cursor: not-allowed;
+        }
+        .status-message {
+            margin-top: 1.5rem;
+            padding: 0.8rem;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        .status-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+<h1>Nieuwe Uitslag Invoeren</h1>
+<form id="scoreForm">
+    <div class="form-group">
+        <label for="date">Datum:</label>
+        <input type="date" id="date" name="date" required>
+    </div>
+
+    <div class="form-group">
+        <label for="teamA">Score Daan & Kors (Team A):</label>
+        <input type="number" id="teamA" name="teamA" min="0" required>
+    </div>
+
+    <div class="form-group">
+        <label for="teamB">Score Jasper & Pijke (Team B):</label>
+        <input type="number" id="teamB" name="teamB" min="0" required>
+    </div>
+
+    <button type="submit" id="submitButton">Opslaan</button>
+</form>
+
+<div id="statusMessage" class="status-message" style="display: none;"></div>
+
+<script>
+    const scoreForm = document.getElementById('scoreForm');
+    const submitButton = document.getElementById('submitButton');
+    const statusMessageElement = document.getElementById('statusMessage');
+
+    scoreForm.addEventListener('submit', async (event) => {
+        event.preventDefault(); // Voorkom standaard formulierinzending
+        submitButton.disabled = true; // Voorkom dubbelklikken
+        statusMessageElement.style.display = 'none'; // Verberg vorig bericht
+
+        const date = document.getElementById('date').value;
+        const teamAScore = document.getElementById('teamA').value;
+        const teamBScore = document.getElementById('teamB').value;
+
+        // Basisvalidatie (HTML5 'required' en 'min' doen al veel)
+        if (!date || teamAScore === '' || teamBScore === '') {
+            showStatus('Vul alle velden in.', 'error');
+            submitButton.disabled = false;
+            return;
+        }
+
+        const scoreData = {
+            date: date,
+            teamA: parseInt(teamAScore, 10), // Zorg ervoor dat het nummers zijn
+            teamB: parseInt(teamBScore, 10)
+        };
+
+        const apiUrl = 'https://sheetdb.io/api/v1/ucho61mr9zbxq';
+        const bearerToken = 'p5dpx0qq7fzud5uqaxcxte3udexhv4sa9pzf1flk';
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${bearerToken}`
+                },
+                // SheetDB verwacht een object met een 'data' property, die een array van objecten is
+                body: JSON.stringify({ data: [scoreData] })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: "Onbekende API fout" }));
+                throw new Error(`Fout bij opslaan: ${response.status} - ${errorData.error || 'Details niet beschikbaar'}`);
+            }
+
+            // De API retourneert { "created": 1 } bij succes voor een enkele rij
+            const result = await response.json();
+            if (result.created && result.created > 0) {
+                showStatus('Uitslag succesvol opgeslagen!', 'success');
+                scoreForm.reset(); // Maak het formulier leeg na succes
+            } else {
+                // Dit zou niet moeten gebeuren als response.ok true is, maar voor de zekerheid
+                throw new Error('Uitslag niet opgeslagen, onbekende respons van API.');
+            }
+
+        } catch (error) {
+            console.error('Fout bij het opslaan van de score:', error);
+            showStatus(`Fout: ${error.message}`, 'error');
+        } finally {
+            submitButton.disabled = false; // Maak de knop weer klikbaar
+        }
+    });
+
+    function showStatus(message, type) {
+        statusMessageElement.textContent = message;
+        statusMessageElement.className = `status-message ${type}`; // type is 'success' of 'error'
+        statusMessageElement.style.display = 'block';
+    }
+</script>
+</body>
+</html>
