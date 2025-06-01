@@ -91,98 +91,99 @@
     </style>
 </head>
 <body>
-<h1>Nieuwe Uitslag Invoeren</h1>
-<form id="scoreForm">
-    <div class="form-group">
-        <label for="date">Datum:</label>
-        <input type="date" id="date" name="date" required>
-    </div>
+    <h1>Nieuwe Uitslag Invoeren</h1>
+    <form id="scoreForm">
+        <div class="form-group">
+            <label for="date">Datum:</label>
+            <input type="date" id="date" name="date" required>
+        </div>
 
-    <div class="form-group">
-        <label for="teamA">Score Daan & Kors (Team A):</label>
-        <input type="number" id="teamA" name="teamA" min="0" required>
-    </div>
+        <div class="form-group">
+            <label for="teamA">Score Daan & Kors (Team A):</label>
+            <input type="number" id="teamA" name="teamA" min="0" required>
+        </div>
 
-    <div class="form-group">
-        <label for="teamB">Score Jasper & Pijke (Team B):</label>
-        <input type="number" id="teamB" name="teamB" min="0" required>
-    </div>
+        <div class="form-group">
+            <label for="teamB">Score Jasper & Pijke (Team B):</label>
+            <input type="number" id="teamB" name="teamB" min="0" required>
+        </div>
 
-    <button type="submit" id="submitButton">Opslaan</button>
-</form>
+        <button type="submit" id="submitButton">Opslaan</button>
+    </form>
 
-<div id="statusMessage" class="status-message" style="display: none;"></div>
+    <div id="statusMessage" class="status-message" style="display: none;"></div>
 
-<script>
-    const scoreForm = document.getElementById('scoreForm');
-    const submitButton = document.getElementById('submitButton');
-    const statusMessageElement = document.getElementById('statusMessage');
+    <script>
+        const scoreForm = document.getElementById('scoreForm');
+        const submitButton = document.getElementById('submitButton');
+        const statusMessageElement = document.getElementById('statusMessage');
 
-    scoreForm.addEventListener('submit', async (event) => {
-        event.preventDefault(); // Voorkom standaard formulierinzending
-        submitButton.disabled = true; // Voorkom dubbelklikken
-        statusMessageElement.style.display = 'none'; // Verberg vorig bericht
+        scoreForm.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Voorkom standaard formulierinzending
+            submitButton.disabled = true; // Voorkom dubbelklikken
+            statusMessageElement.style.display = 'none'; // Verberg vorig bericht
 
-        const date = document.getElementById('date').value;
-        const teamAScore = document.getElementById('teamA').value;
-        const teamBScore = document.getElementById('teamB').value;
+            const date = document.getElementById('date').value;
+            const teamAScore = document.getElementById('teamA').value;
+            const teamBScore = document.getElementById('teamB').value;
 
-        // Basisvalidatie (HTML5 'required' en 'min' doen al veel)
-        if (!date || teamAScore === '' || teamBScore === '') {
-            showStatus('Vul alle velden in.', 'error');
-            submitButton.disabled = false;
-            return;
-        }
-
-        const scoreData = {
-            date: date,
-            teamA: parseInt(teamAScore, 10), // Zorg ervoor dat het nummers zijn
-            teamB: parseInt(teamBScore, 10)
-        };
-
-        const apiUrl = 'https://sheetdb.io/api/v1/ucho61mr9zbxq';
-        const bearerToken = 'p5dpx0qq7fzud5uqaxcxte3udexhv4sa9pzf1flk';
-
-        try {
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${bearerToken}`
-                },
-                // SheetDB verwacht een object met een 'data' property, die een array van objecten is
-                body: JSON.stringify({ data: [scoreData] })
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: "Onbekende API fout" }));
-                throw new Error(`Fout bij opslaan: ${response.status} - ${errorData.error || 'Details niet beschikbaar'}`);
+            if (!date || teamAScore === '' || teamBScore === '') {
+                showStatus('Vul alle velden in.', 'error');
+                submitButton.disabled = false;
+                return;
             }
 
-            // De API retourneert { "created": 1 } bij succes voor een enkele rij
-            const result = await response.json();
-            if (result.created && result.created > 0) {
-                showStatus('Uitslag succesvol opgeslagen!', 'success');
-                scoreForm.reset(); // Maak het formulier leeg na succes
-            } else {
-                // Dit zou niet moeten gebeuren als response.ok true is, maar voor de zekerheid
-                throw new Error('Uitslag niet opgeslagen, onbekende respons van API.');
-            }
+            const scoreData = {
+                date: date,
+                teamA: parseInt(teamAScore, 10), 
+                teamB: parseInt(teamBScore, 10)
+            };
 
-        } catch (error) {
-            console.error('Fout bij het opslaan van de score:', error);
-            showStatus(`Fout: ${error.message}`, 'error');
-        } finally {
-            submitButton.disabled = false; // Maak de knop weer klikbaar
+            const apiUrl = 'https://sheetdb.io/api/v1/ucho61mr9zbxq';
+            const bearerToken = 'p5dpx0qq7fzud5uqaxcxte3udexhv4sa9pzf1flk';
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${bearerToken}`
+                    },
+                    body: JSON.stringify({ data: [scoreData] }) 
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: "Onbekende API fout" }));
+                    throw new Error(`Fout bij opslaan: ${response.status} - ${errorData.error || 'Details niet beschikbaar'}`);
+                }
+
+                const result = await response.json();
+                if (result.created && result.created > 0) {
+                    showStatus('Uitslag succesvol opgeslagen! Je wordt teruggestuurd...', 'success');
+                    scoreForm.reset(); 
+                    // Wacht 2 seconden voordat je doorstuurt, zodat de gebruiker het bericht kan lezen
+                    setTimeout(() => {
+                        window.location.href = 'index.html'; // Stuur door naar index.html
+                    }, 2000); // 2000 milliseconden = 2 seconden
+                } else {
+                    throw new Error('Uitslag niet opgeslagen, onbekende respons van API.');
+                }
+
+            } catch (error) {
+                console.error('Fout bij het opslaan van de score:', error);
+                showStatus(`Fout: ${error.message}`, 'error');
+                submitButton.disabled = false; // Maak de knop weer klikbaar bij een fout
+            } 
+            // submitButton.disabled = false; wordt nu alleen hierboven gedaan bij fout,
+            // want bij succes redirecten we toch.
+        });
+
+        function showStatus(message, type) {
+            statusMessageElement.textContent = message;
+            statusMessageElement.className = `status-message ${type}`; 
+            statusMessageElement.style.display = 'block';
         }
-    });
-
-    function showStatus(message, type) {
-        statusMessageElement.textContent = message;
-        statusMessageElement.className = `status-message ${type}`; // type is 'success' of 'error'
-        statusMessageElement.style.display = 'block';
-    }
-</script>
+    </script>
 </body>
 </html>
