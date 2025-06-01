@@ -1,0 +1,16 @@
+# Zet de rewrite engine aan
+RewriteEngine On
+
+# Zorg ervoor dat het geen bestaand bestand of map is
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Herschrijf verzoeken naar .html bestanden
+# Bijvoorbeeld: /add wordt /add.html
+RewriteRule ^([^/]+)/?$ $1.html [L,QSA]
+
+# Optioneel: Herschrijf verzoeken naar de index.html als alleen de map wordt opgevraagd
+# Bijvoorbeeld: /subfolder/ wordt /subfolder/index.html
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)/$ $1/index.html [L,QSA]
