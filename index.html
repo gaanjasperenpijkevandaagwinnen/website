@@ -13,186 +13,402 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
+      justify-content: flex-start; /* Align to top to see all content */
+      min-height: 100vh; /* Ensure body takes at least full height */
       text-align: center;
-      padding: 1rem;
-      overflow: hidden;
+      padding: 1.5rem; /* Increased padding */
+      overflow-y: auto; /* Allow scrolling if content overflows */
     }
     h1 {
       font-size: 2rem;
       margin-bottom: 1rem;
       text-shadow: 1px 1px #fff;
     }
+    h2 {
+      font-size: 1.5rem;
+      margin-top: 2rem; /* Space above section titles */
+      margin-bottom: 0.5rem;
+      color: #333;
+    }
     .answer {
       font-size: 3rem;
       font-weight: bold;
-      margin-bottom: 2rem;
+      margin-bottom: 1rem; /* Adjusted margin */
       animation: pop 0.6s ease;
     }
     .scoreboard {
       display: flex;
       flex-direction: column;
       background: #2e2e2e;
-      padding: 1rem 2rem;
+      padding: 1rem 1.5rem; /* Adjusted padding */
       border-radius: 12px;
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
       margin-bottom: 1rem;
+      width: fit-content; /* Make scoreboard wrap content */
+      max-width: 90%; /* Ensure it doesn't get too wide */
     }
     .row-wrapper {
       display: flex;
       align-items: center;
       gap: 1rem;
-      margin-bottom: 1rem;
+      margin-bottom: 0.75rem; /* Adjusted margin */
+    }
+    .row-wrapper:last-child {
+      margin-bottom: 0;
     }
     .team-label {
       color: #fff;
       font-weight: bold;
-      width: 120px;
+      width: 130px; /* Slightly wider for longer names if needed */
       text-align: right;
+      font-size: 0.9rem; /* Adjusted font size */
     }
     .row {
       display: flex;
-      gap: 8px;
+      flex-wrap: wrap; /* Allow beads to wrap if many */
+      gap: 6px; /* Adjusted gap */
     }
     .bead {
-      width: 20px;
-      height: 20px;
+      width: 18px; /* Slightly smaller beads */
+      height: 18px;
       border-radius: 50%;
       background: #facc15;
       box-shadow: inset 0 0 3px #000;
     }
-    #tiebreak {
+    #tiebreak, .latest-actual-result-text {
       font-size: 1rem;
       color: #444;
       text-align: center;
+      margin-top: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .error-message {
+      color: red;
+      font-weight: bold;
+      margin-top: 1rem;
     }
     @keyframes pop {
       0% { transform: scale(0.8); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
+    /* Confetti canvas styling */
+    #confetti-canvas {
+      position:fixed;
+      pointer-events:none;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      z-index:999;
+    }
   </style>
 </head>
 <body>
-  <h1>Gaan Jasper & Pijke vandaag winnen?</h1>
-  <div class="answer" id="answer">...</div>
-  <div class="scoreboard">
-    <div class="row-wrapper">
-      <div class="team-label">Daan & Kors</div>
-      <div class="row" id="row1"></div>
-    </div>
-    <div class="row-wrapper">
-      <div class="team-label">Jasper & Pijke</div>
-      <div class="row" id="row2"></div>
-    </div>
+<h1>Gaan Jasper & Pijke vandaag winnen?</h1>
+
+<h2>Voorspelling van Vandaag</h2>
+<div class="answer" id="answer">...</div>
+<div class="scoreboard">
+  <div class="row-wrapper">
+    <div class="team-label">Daan & Kors</div>
+    <div class="row" id="predicted_row1"></div>
   </div>
-  <div id="tiebreak"></div>
-  <canvas id="confetti-canvas" style="position:fixed;pointer-events:none;top:0;left:0;width:100%;height:100%;z-index:999;"></canvas>
-  <script>
-    const confetti = {
-      canvas: null,
-      ctx: null,
-      particles: [],
-      colors: ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"],
-      init() {
-        this.canvas = document.getElementById('confetti-canvas');
-        this.ctx = this.canvas.getContext('2d');
-        this.resizeCanvas();
-        window.addEventListener('resize', () => this.resizeCanvas());
-      },
-      resizeCanvas() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-      },
-      start() {
-        this.particles = [];
-        for (let i = 0; i < 150; i++) {
-          this.particles.push(this.createParticle());
+  <div class="row-wrapper">
+    <div class="team-label">Jasper & Pijke</div>
+    <div class="row" id="predicted_row2"></div>
+  </div>
+</div>
+<div id="tiebreak"></div>
+
+<h2>Laatste keer gewonnen</h2>
+<div class="latest-actual-result-text" id="latest-actual-result-text">Laden...</div>
+<div class="scoreboard" id="actual_scoreboard_container">
+  <div class="row-wrapper">
+    <div class="team-label">Daan & Kors</div>
+    <div class="row" id="actual_row1"></div>
+  </div>
+  <div class="row-wrapper">
+    <div class="team-label">Jasper & Pijke</div>
+    <div class="row" id="actual_row2"></div>
+  </div>
+</div>
+<div id="api-error-message" class="error-message" style="display:none;"></div>
+
+
+<canvas id="confetti-canvas"></canvas>
+
+<script>
+  // --- Confetti Logic ---
+  const confetti = {
+    canvas: null,
+    ctx: null,
+    particles: [],
+    colors: ["#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93"],
+    animationFrameId: null,
+    init() {
+      this.canvas = document.getElementById('confetti-canvas');
+      if (!this.canvas) {
+        console.error("Confetti canvas not found!");
+        return;
+      }
+      this.ctx = this.canvas.getContext('2d');
+      this.resizeCanvas();
+      window.addEventListener('resize', () => this.resizeCanvas());
+    },
+    resizeCanvas() {
+      if (!this.canvas) return;
+      this.canvas.width = window.innerWidth;
+      this.canvas.height = window.innerHeight;
+    },
+    start() {
+      if (!this.ctx) return;
+      this.particles = [];
+      for (let i = 0; i < 150; i++) {
+        this.particles.push(this.createParticle());
+      }
+      if (this.animationFrameId) {
+        cancelAnimationFrame(this.animationFrameId);
+      }
+      this.update();
+    },
+    createParticle() {
+      if (!this.canvas) return {};
+      return {
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * -this.canvas.height * 0.5,
+        size: Math.random() * 8 + 2,
+        color: this.colors[Math.floor(Math.random() * this.colors.length)],
+        speedY: Math.random() * 2 + 1.5,
+        speedX: Math.random() * 2 - 1,
+        opacity: 1,
+        rotation: Math.random() * 360,
+        spin: (Math.random() - 0.5) * 10,
+      };
+    },
+    update() {
+      if (!this.ctx || !this.canvas) return;
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      let activeParticles = false;
+      this.particles.forEach((p) => {
+        p.y += p.speedY;
+        p.x += p.speedX;
+        p.rotation += p.spin;
+
+        if (p.y > this.canvas.height * 0.8) {
+          p.opacity -= 0.02;
         }
-        requestAnimationFrame(() => this.update());
-      },
-      createParticle() {
-        return {
-          x: Math.random() * this.canvas.width,
-          y: Math.random() * -this.canvas.height,
-          size: Math.random() * 8 + 2,
-          color: this.colors[Math.floor(Math.random() * this.colors.length)],
-          speedY: Math.random() * 3 + 2,
-          speedX: Math.random() * 2 - 1
-        };
-      },
-      update() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.particles.forEach(p => {
-          p.x += p.speedX;
-          p.y += p.speedY;
-          if (p.y > this.canvas.height) {
-            p.y = 0;
-            p.x = Math.random() * this.canvas.width;
-          }
+
+        if (p.opacity > 0 && p.y < this.canvas.height + p.size) {
+          activeParticles = true;
+          this.ctx.save();
+          this.ctx.translate(p.x + p.size / 2, p.y + p.size / 2);
+          this.ctx.rotate(p.rotation * Math.PI / 180);
           this.ctx.fillStyle = p.color;
-          this.ctx.beginPath();
-          this.ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-          this.ctx.fill();
-        });
-        requestAnimationFrame(() => this.update());
-      }
-    };
-    function getTodayKey() {
-      const today = new Date();
-      return today.toISOString().split('T')[0];
-    }
-    function getDailyHash(input) {
-      let hash = 0;
-      for (let i = 0; i < input.length; i++) {
-        hash = (hash << 5) - hash + input.charCodeAt(i);
-        hash |= 0;
-      }
-      return Math.abs(hash);
-    }
-    function getDeterministicAnswer() {
-      const hash = getDailyHash(getTodayKey());
-      return hash % 2 === 0 ? 'Ja' : 'Nee';
-    }
-    function generateSingleSetScore(answer) {
-      const base = getDailyHash(getTodayKey() + "_set");
-      const outcomes = [[6, 0], [6, 1], [6, 2], [6, 3], [6, 4], [7, 5], [7, 6]];
-      const index = base % outcomes.length;
-      let [a, b] = outcomes[index];
-      const pijkeJasperWin = answer === 'Ja';
-      const scoreA = pijkeJasperWin ? b : a;
-      const scoreB = pijkeJasperWin ? a : b;
-      let tiebreak = null;
-      if ((scoreA === 7 && scoreB === 6) || (scoreA === 6 && scoreB === 7)) {
-        const tiebreakPoints = 7 + (base % 5);
-        const loserPoints = Math.floor(Math.random() * 5) + 4;
-        tiebreak = `${tiebreakPoints}–${loserPoints}`;
-      }
-      return { scoreA, scoreB, tiebreak };
-    }
-    function generateGame() {
-      const answer = getDeterministicAnswer();
-      document.getElementById('answer').textContent = answer;
-      const { scoreA, scoreB, tiebreak } = generateSingleSetScore(answer);
-      document.getElementById('row1').innerHTML = '';
-      document.getElementById('row2').innerHTML = '';
-      for (let i = 0; i < scoreA; i++) {
-        const bead = document.createElement('div');
-        bead.className = 'bead';
-        document.getElementById('row1').appendChild(bead);
-      }
-      for (let i = 0; i < scoreB; i++) {
-        const bead = document.createElement('div');
-        bead.className = 'bead';
-        document.getElementById('row2').appendChild(bead);
-      }
-      document.getElementById('tiebreak').textContent = tiebreak ? `(Tiebreak: ${tiebreak})` : '';
-      if (answer === 'Ja') {
-        confetti.start();
+          this.ctx.globalAlpha = p.opacity;
+          this.ctx.fillRect(-p.size/2, -p.size/2, p.size, p.size/2);
+          this.ctx.restore();
+        }
+      });
+
+      if (activeParticles) {
+        this.animationFrameId = requestAnimationFrame(() => this.update());
+      } else {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.animationFrameId = null;
       }
     }
+  };
+
+  // --- Daily Prediction Logic ---
+  function getTodayKey() {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  }
+
+  function getDailyHash(input) {
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+      hash = (hash << 5) - hash + input.charCodeAt(i);
+      hash |= 0;
+    }
+    return Math.abs(hash);
+  }
+
+  function getDeterministicAnswer() {
+    const hash = getDailyHash(getTodayKey());
+    return hash % 2 === 0 ? 'Ja' : 'Nee';
+  }
+
+  function generateSingleSetScore(answer) {
+    const base = getDailyHash(getTodayKey() + "_set_prediction");
+    const outcomes = [
+      [6,0], [6,1], [6,2], [6,3], [6,4],
+      [7,5], [7,6]
+    ];
+    const index = base % outcomes.length;
+    let [scoreTeam1, scoreTeam2] = outcomes[index];
+
+    const pijkeJasperWin = (answer === 'Ja');
+
+    const scorePijkeJasper = pijkeJasperWin ? scoreTeam1 : scoreTeam2;
+    const scoreDaanKors = pijkeJasperWin ? scoreTeam2 : scoreTeam1;
+
+    let tiebreakDetails = null;
+    if ((scorePijkeJasper === 7 && scoreDaanKors === 6) || (scoreDaanKors === 7 && scorePijkeJasper === 6)) {
+      const tiebreakBase = getDailyHash(getTodayKey() + "_tiebreak_prediction");
+      const tiebreakPointsWinner = 7 + (tiebreakBase % 4);
+      let tiebreakPointsLoser;
+      if (tiebreakPointsWinner === 7) {
+        tiebreakPointsLoser = (tiebreakBase % 5);
+      } else {
+        tiebreakPointsLoser = tiebreakPointsWinner - 2;
+      }
+      tiebreakPointsLoser = Math.max(0, Math.min(tiebreakPointsLoser, tiebreakPointsWinner - 2));
+      tiebreakDetails = pijkeJasperWin ? `${tiebreakPointsWinner}–${tiebreakPointsLoser}` : `${tiebreakPointsLoser}–${tiebreakPointsWinner}`;
+    }
+    return { scoreA: scoreDaanKors, scoreB: scorePijkeJasper, tiebreak: tiebreakDetails };
+  }
+
+  function displayBeads(rowElementId, score) {
+    const rowElement = document.getElementById(rowElementId);
+    if (!rowElement) {
+      console.error(`Element with ID ${rowElementId} not found.`);
+      return;
+    }
+    rowElement.innerHTML = '';
+    const scoreNum = Number(score);
+    const validScore = isNaN(scoreNum) ? 0 : scoreNum;
+
+    for (let i = 0; i < validScore; i++) {
+      const bead = document.createElement('div');
+      bead.className = 'bead';
+      rowElement.appendChild(bead);
+    }
+  }
+
+  function generatePredictedGame() {
+    const answer = getDeterministicAnswer();
+    document.getElementById('answer').textContent = answer;
+
+    const { scoreA, scoreB, tiebreak } = generateSingleSetScore(answer);
+
+    displayBeads('predicted_row1', scoreA);
+    displayBeads('predicted_row2', scoreB);
+
+    const tiebreakEl = document.getElementById('tiebreak');
+    tiebreakEl.textContent = tiebreak ? `(Voorspelde Tiebreak: ${tiebreak})` : '';
+
+    if (answer === 'Ja') {
+      confetti.start();
+    }
+  }
+
+  // --- Fetch Latest Actual Result Logic ---
+  async function fetchLatestActualResult() {
+    const resultTextElement = document.getElementById('latest-actual-result-text');
+    const apiErrorElement = document.getElementById('api-error-message');
+    const actualScoreboardContainer = document.getElementById('actual_scoreboard_container');
+
+    try {
+      const apiUrl = 'https://sheetdb.io/api/v1/ucho61mr9zbxq';
+      const bearerToken = 'p5dpx0qq7fzud5uqaxcxte3udexhv4sa9pzf1flk';
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Authorization': `Bearer ${bearerToken}`
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Kon foutdetails niet parsen" }));
+        throw new Error(`API Fout: ${response.status} - ${errorData.error || 'Kon data niet ophalen'}`);
+      }
+
+      const rawData = await response.json();
+      let dataArray = [];
+
+      // Check if rawData is an array or an object with numeric keys
+      if (Array.isArray(rawData)) {
+        dataArray = rawData;
+      } else if (typeof rawData === 'object' && rawData !== null && Object.keys(rawData).length > 0) {
+        // If it's an object like {"0": {...}, "1": {...}}, convert its values to an array
+        // And sort by key to ensure order, assuming keys are numeric strings
+        const sortedKeys = Object.keys(rawData).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        dataArray = sortedKeys.map(key => rawData[key]);
+      }
+
+
+      if (dataArray && dataArray.length > 0) {
+        const latestResult = dataArray[dataArray.length - 1]; // Get the last item from the (potentially converted) array
+        const date = latestResult.date || 'Onbekende datum';
+
+        // Use teamA and teamB as per the API response structure
+        const scoreA_raw = latestResult.teamA;
+        const scoreB_raw = latestResult.teamB;
+
+        let finalScoreA = 0;
+        let finalScoreB = 0;
+
+        // Verwerk scoreA
+        if (typeof scoreA_raw === 'string' && scoreA_raw.trim() !== "") {
+          const parsedA = Number(scoreA_raw.trim());
+          if (!isNaN(parsedA)) {
+            finalScoreA = parsedA;
+          } else {
+            console.warn(`Ongeldige teamA waarde (kon string '${scoreA_raw}' niet naar nummer converteren). Gebruikt 0.`);
+          }
+        } else if (typeof scoreA_raw === 'number' && !isNaN(scoreA_raw)) {
+          finalScoreA = scoreA_raw;
+        }
+        else {
+          console.warn(`Lege of ongeldige teamA waarde ontvangen: '${scoreA_raw}' (type: ${typeof scoreA_raw}). Gebruikt 0.`);
+        }
+
+        // Verwerk scoreB
+        if (typeof scoreB_raw === 'string' && scoreB_raw.trim() !== "") {
+          const parsedB = Number(scoreB_raw.trim());
+          if (!isNaN(parsedB)) {
+            finalScoreB = parsedB;
+          } else {
+            console.warn(`Ongeldige teamB waarde (kon string '${scoreB_raw}' niet naar nummer converteren). Gebruikt 0.`);
+          }
+        } else if (typeof scoreB_raw === 'number' && !isNaN(scoreB_raw)) {
+          finalScoreB = scoreB_raw;
+        }
+        else {
+          console.warn(`Lege of ongeldige teamB waarde ontvangen: '${scoreB_raw}' (type: ${typeof scoreB_raw}). Gebruikt 0.`);
+        }
+
+        resultTextElement.textContent = date
+
+        displayBeads('actual_row1', finalScoreA);
+        displayBeads('actual_row2', finalScoreB);
+
+        if(actualScoreboardContainer) actualScoreboardContainer.style.display = 'flex';
+        if(apiErrorElement) apiErrorElement.style.display = 'none';
+
+      } else {
+        if(resultTextElement) resultTextElement.textContent = 'Geen recente uitslagen gevonden.';
+        if(actualScoreboardContainer) actualScoreboardContainer.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('Fout bij ophalen laatste uitslag:', error);
+      if(resultTextElement) resultTextElement.textContent = 'Kon de laatste echte uitslag niet laden.';
+      if(apiErrorElement) {
+        apiErrorElement.textContent = `Details: ${error.message}`;
+        apiErrorElement.style.display = 'block';
+      }
+      if (actualScoreboardContainer) actualScoreboardContainer.style.display = 'none';
+    }
+  }
+
+  // --- Initialize Page ---
+  document.addEventListener('DOMContentLoaded', () => {
     confetti.init();
-    generateGame();
-  </script>
+    generatePredictedGame();
+    fetchLatestActualResult();
+  });
+
+</script>
 </body>
 </html>
