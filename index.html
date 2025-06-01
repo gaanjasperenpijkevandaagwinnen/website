@@ -13,45 +13,49 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start; /* Align to top to see all content */
-      min-height: 100vh; /* Ensure body takes at least full height */
+      justify-content: flex-start;
+      min-height: 100vh;
       text-align: center;
-      padding: 1.5rem; /* Increased padding */
-      overflow-y: auto; /* Allow scrolling if content overflows */
+      padding: 1.5rem;
+      overflow-y: auto;
     }
     h1 {
       font-size: 2rem;
       margin-bottom: 1rem;
       text-shadow: 1px 1px #fff;
     }
-    h2 {
+    h2 { /* Standaard h2 styling */
       font-size: 1.5rem;
-      margin-top: 2rem; /* Space above section titles */
+      margin-top: 2rem;
       margin-bottom: 0.5rem;
       color: #333;
     }
+    .prediction-title { /* Specifieke class voor de voorspellingstitel */
+      font-size: 2.2rem; /* Groter dan standaard h2 */
+      margin-bottom: 1rem; /* Meer ruimte onder de titel */
+    }
     .answer {
-      font-size: 3rem;
+      font-size: 5rem; /* Nog iets groter gemaakt */
       font-weight: bold;
-      margin-bottom: 1rem; /* Adjusted margin */
+      margin-bottom: 1.5rem;
       animation: pop 0.6s ease;
     }
     .scoreboard {
       display: flex;
       flex-direction: column;
       background: #2e2e2e;
-      padding: 1rem 1.5rem; /* Adjusted padding */
+      padding: 1rem 1.5rem;
       border-radius: 12px;
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
       margin-bottom: 1rem;
-      width: fit-content; /* Make scoreboard wrap content */
-      max-width: 90%; /* Ensure it doesn't get too wide */
+      width: fit-content;
+      max-width: 90%;
     }
     .row-wrapper {
       display: flex;
       align-items: center;
       gap: 1rem;
-      margin-bottom: 0.75rem; /* Adjusted margin */
+      margin-bottom: 0.75rem;
     }
     .row-wrapper:last-child {
       margin-bottom: 0;
@@ -59,23 +63,47 @@
     .team-label {
       color: #fff;
       font-weight: bold;
-      width: 130px; /* Slightly wider for longer names if needed */
+      width: 130px;
       text-align: right;
-      font-size: 0.9rem; /* Adjusted font size */
+      font-size: 0.9rem;
     }
     .row {
       display: flex;
-      flex-wrap: wrap; /* Allow beads to wrap if many */
-      gap: 6px; /* Adjusted gap */
+      flex-wrap: wrap;
+      gap: 6px;
     }
     .bead {
-      width: 18px; /* Slightly smaller beads */
+      width: 18px;
       height: 18px;
       border-radius: 50%;
       background: #facc15;
       box-shadow: inset 0 0 3px #000;
     }
-    #tiebreak, .latest-actual-result-text {
+
+    /* Specifieke styling voor het voorspellingsscorebord */
+    #prediction_scoreboard .team-label {
+      font-size: 1.1rem; /* Grotere team labels */
+      width: 150px; /* Iets breder voor grotere tekst */
+    }
+    #prediction_scoreboard .bead {
+      width: 24px; /* Grotere kralen */
+      height: 24px;
+    }
+    #prediction_scoreboard .row {
+      gap: 8px; /* Iets meer ruimte tussen grotere kralen */
+    }
+    #prediction_scoreboard .row-wrapper {
+      gap: 1.2rem; /* Iets meer ruimte tussen label en kralenrij */
+      margin-bottom: 1rem; /* Meer ruimte tussen de rijen */
+    }
+
+
+    #tiebreak { /* Tiebreak tekst onder voorspelling */
+      font-size: 1.2rem; /* Grotere tiebreak tekst */
+      color: #333; /* Donkerder voor betere leesbaarheid */
+      margin-top: 0.8rem;
+    }
+    .latest-actual-result-text { /* Tekst boven daadwerkelijke uitslag */
       font-size: 1rem;
       color: #444;
       text-align: center;
@@ -91,7 +119,6 @@
       0% { transform: scale(0.8); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
-    /* Confetti canvas styling */
     #confetti-canvas {
       position:fixed;
       pointer-events:none;
@@ -106,9 +133,9 @@
 <body>
 <h1>Gaan Jasper & Pijke vandaag winnen?</h1>
 
-<h2>Voorspelling van Vandaag</h2>
+<h2 class="prediction-title">Voorspelling van Vandaag</h2>
 <div class="answer" id="answer">...</div>
-<div class="scoreboard">
+<div class="scoreboard" id="prediction_scoreboard">
   <div class="row-wrapper">
     <div class="team-label">Daan & Kors</div>
     <div class="row" id="predicted_row1"></div>
@@ -138,7 +165,7 @@
 <canvas id="confetti-canvas"></canvas>
 
 <script>
-  // --- Confetti Logic ---
+  // --- Standaard Confetti Logic ---
   const confetti = {
     canvas: null,
     ctx: null,
@@ -152,8 +179,8 @@
         return;
       }
       this.ctx = this.canvas.getContext('2d');
-      this.resizeCanvas();
-      window.addEventListener('resize', () => this.resizeCanvas());
+      this.resizeCanvas(); // Initial resize
+      window.addEventListener('resize', () => this.resizeCanvas()); // Resize on window change
     },
     resizeCanvas() {
       if (!this.canvas) return;
@@ -161,7 +188,7 @@
       this.canvas.height = window.innerHeight;
     },
     start() {
-      if (!this.ctx) return;
+      if (!this.ctx || !this.canvas) return;
       this.particles = [];
       for (let i = 0; i < 150; i++) {
         this.particles.push(this.createParticle());
@@ -218,6 +245,114 @@
       }
     }
   };
+
+  // --- Sukkels Confetti Logic ---
+  const sukkelsConfetti = {
+    canvas: null,
+    ctx: null,
+    particles: [],
+    image: new Image(),
+    imageLoaded: false,
+    animationFrameId: null,
+
+    init(imageSrc) { // imageSrc kan een pad zijn of een data URI
+      this.canvas = document.getElementById('confetti-canvas'); // Hergebruik hetzelfde canvas
+      if (!this.canvas) {
+        console.error("Sukkels Confetti: canvas not found!");
+        return;
+      }
+      this.ctx = this.canvas.getContext('2d');
+
+      this.image.onload = () => {
+        this.imageLoaded = true;
+        console.log("Sukkels afbeelding voor confetti geladen.");
+      };
+      this.image.onerror = () => {
+        console.error("Sukkels afbeelding voor confetti kon niet geladen worden. Controleer het pad/URL.");
+      };
+      this.image.src = imageSrc;
+    },
+    start() {
+      if (!this.ctx || !this.canvas) {
+        console.error("Sukkels Confetti: canvas context niet beschikbaar.");
+        return;
+      }
+      if (!this.imageLoaded) {
+        console.warn("Sukkels afbeelding nog niet geladen, confetti start niet. Probeert over 0.5s opnieuw als afbeelding dan geladen is.");
+        setTimeout(() => {
+          if(this.imageLoaded) this.start();
+        }, 500);
+        return;
+      }
+      this.particles = [];
+      // Verminder het aantal deeltjes van 50 naar 20
+      for (let i = 0; i < 20; i++) {
+        this.particles.push(this.createParticle());
+      }
+      if (this.animationFrameId) {
+        cancelAnimationFrame(this.animationFrameId);
+      }
+      this.update();
+    },
+    createParticle() {
+      if (!this.canvas) return {};
+      const imgAspectRatio = this.imageLoaded && this.image.width > 0 && this.image.height > 0 ? this.image.width / this.image.height : 1;
+      const baseSize = Math.random() * 120 + 90;
+
+      let particleWidth, particleHeight;
+      if (imgAspectRatio >= 1) {
+        particleWidth = baseSize;
+        particleHeight = baseSize / imgAspectRatio;
+      } else {
+        particleHeight = baseSize;
+        particleWidth = baseSize * imgAspectRatio;
+      }
+
+      return {
+        x: Math.random() * this.canvas.width,
+        y: Math.random() * -this.canvas.height * 0.5,
+        width: particleWidth,
+        height: particleHeight,
+        speedY: Math.random() * 2 + 1,
+        speedX: Math.random() * 2 - 1,
+        opacity: 1,
+        rotation: Math.random() * 360,
+        spin: (Math.random() - 0.5) * 5
+      };
+    },
+    update() {
+      if (!this.ctx || !this.canvas || !this.imageLoaded) return;
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      let activeParticles = false;
+      this.particles.forEach((p) => {
+        p.y += p.speedY;
+        p.x += p.speedX;
+        p.rotation += p.spin;
+
+        if (p.y > this.canvas.height * 0.9) {
+          p.opacity -= 0.03;
+        }
+
+        if (p.opacity > 0 && p.y < this.canvas.height + p.height) {
+          activeParticles = true;
+          this.ctx.save();
+          this.ctx.translate(p.x + p.width / 2, p.y + p.height / 2);
+          this.ctx.rotate(p.rotation * Math.PI / 180);
+          this.ctx.globalAlpha = p.opacity;
+          this.ctx.drawImage(this.image, -p.width / 2, -p.height / 2, p.width, p.height);
+          this.ctx.restore();
+        }
+      });
+
+      if (activeParticles) {
+        this.animationFrameId = requestAnimationFrame(() => this.update());
+      } else {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.animationFrameId = null;
+      }
+    }
+  };
+
 
   // --- Daily Prediction Logic ---
   function getTodayKey() {
@@ -298,8 +433,23 @@
     const tiebreakEl = document.getElementById('tiebreak');
     tiebreakEl.textContent = tiebreak ? `(Voorspelde Tiebreak: ${tiebreak})` : '';
 
+    if (confetti.animationFrameId) {
+      cancelAnimationFrame(confetti.animationFrameId);
+      confetti.animationFrameId = null;
+      if (confetti.ctx && confetti.canvas) confetti.ctx.clearRect(0, 0, confetti.canvas.width, confetti.canvas.height);
+    }
+    if (sukkelsConfetti.animationFrameId) {
+      cancelAnimationFrame(sukkelsConfetti.animationFrameId);
+      sukkelsConfetti.animationFrameId = null;
+      if (sukkelsConfetti.ctx && sukkelsConfetti.canvas) sukkelsConfetti.ctx.clearRect(0, 0, sukkelsConfetti.canvas.width, sukkelsConfetti.canvas.height);
+    }
+
     if (answer === 'Ja') {
-      confetti.start();
+      if (scoreA === 0 && scoreB === 6) {
+        sukkelsConfetti.start();
+      } else {
+        confetti.start();
+      }
     }
   }
 
@@ -327,29 +477,24 @@
       const rawData = await response.json();
       let dataArray = [];
 
-      // Check if rawData is an array or an object with numeric keys
       if (Array.isArray(rawData)) {
         dataArray = rawData;
       } else if (typeof rawData === 'object' && rawData !== null && Object.keys(rawData).length > 0) {
-        // If it's an object like {"0": {...}, "1": {...}}, convert its values to an array
-        // And sort by key to ensure order, assuming keys are numeric strings
         const sortedKeys = Object.keys(rawData).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         dataArray = sortedKeys.map(key => rawData[key]);
       }
 
 
       if (dataArray && dataArray.length > 0) {
-        const latestResult = dataArray[dataArray.length - 1]; // Get the last item from the (potentially converted) array
+        const latestResult = dataArray[dataArray.length - 1];
         const date = latestResult.date || 'Onbekende datum';
 
-        // Use teamA and teamB as per the API response structure
         const scoreA_raw = latestResult.teamA;
         const scoreB_raw = latestResult.teamB;
 
         let finalScoreA = 0;
         let finalScoreB = 0;
 
-        // Verwerk scoreA
         if (typeof scoreA_raw === 'string' && scoreA_raw.trim() !== "") {
           const parsedA = Number(scoreA_raw.trim());
           if (!isNaN(parsedA)) {
@@ -364,7 +509,6 @@
           console.warn(`Lege of ongeldige teamA waarde ontvangen: '${scoreA_raw}' (type: ${typeof scoreA_raw}). Gebruikt 0.`);
         }
 
-        // Verwerk scoreB
         if (typeof scoreB_raw === 'string' && scoreB_raw.trim() !== "") {
           const parsedB = Number(scoreB_raw.trim());
           if (!isNaN(parsedB)) {
@@ -379,7 +523,7 @@
           console.warn(`Lege of ongeldige teamB waarde ontvangen: '${scoreB_raw}' (type: ${typeof scoreB_raw}). Gebruikt 0.`);
         }
 
-        resultTextElement.textContent = date
+        resultTextElement.textContent = date;
 
         displayBeads('actual_row1', finalScoreA);
         displayBeads('actual_row2', finalScoreB);
@@ -404,6 +548,13 @@
 
   // --- Initialize Page ---
   document.addEventListener('DOMContentLoaded', () => {
+    // const placeholderSukkelsSVG = `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="40" height="40"><path d="M50,8C26.8,8,8,26.8,8,50s18.8,42,42,42s42-18.8,42-42S73.2,8,50,8z M50,88C28.9,88,12,71.1,12,50S28.9,12,50,12s38,16.9,38,38S71.1,88,50,88z" fill="#795548"/><path d="M70.3,62.2c-2.2-2.2-5.1-3.4-8.2-3.4H37.9c-3.1,0-6,1.3-8.2,3.4c-1.2,1.2-1.8,2.7-1.8,4.4c0,2.3,1.2,4.4,3.1,5.8 C33.2,74,36.4,75,40,75h20c3.6,0,6.8-1,9-2.6c1.9-1.3,3.1-3.4,3.1-5.8C72.1,64.9,71.5,63.4,70.3,62.2z" fill="#A1887F"/><ellipse cx="38" cy="43" rx="6" ry="8" fill="#FFFFFF"/><ellipse cx="62" cy="43" rx="6" ry="8" fill="#FFFFFF"/><circle cx="38" cy="43" r="3" fill="#000000"/><circle cx="62" cy="43" r="3" fill="#000000"/><path d="M50,70c-8.3,0-15-6.7-15-15h30C65,63.3,58.3,70,50,70z" fill="#FFFFFF"/><path d="M50,68c-7.2,0-13-5.8-13-13h26C63,62.2,57.2,68,50,68z" fill="#E57373"/></svg>')}`;
+    // BELANGRIJK: Als je 'sukkels.png' lokaal gebruikt, vervang placeholderSukkelsSVG hierboven met het pad, bijv.:
+    const afbeeldingVoorSukkelsConfetti = 'sukkels.png';
+    sukkelsConfetti.init(afbeeldingVoorSukkelsConfetti);
+    // Anders, als je de SVG placeholder wilt blijven gebruiken:
+    // sukkelsConfetti.init(placeholderSukkelsSVG);
+
     confetti.init();
     generatePredictedGame();
     fetchLatestActualResult();
