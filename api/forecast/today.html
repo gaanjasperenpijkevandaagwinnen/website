@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vandaag voorspelling API</title>
+</head>
+<body>
+  <pre id="data"></pre>
+  <script>
+    (function() {
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const hour = now.getHours();
+      const seed = dayOfWeek * 24 + hour;
+      const prediction = seed % 2 === 0 ? 'ja' : 'nee';
+      const output = {
+        "vraag": "Gaan Jasper & Pijke winnen?",
+        "voorspelling": prediction,
+        "moment": "today",
+        "timestamp": now.toISOString()
+      };
+      document.getElementById('data').textContent = JSON.stringify(output, null, 2);
+    })();
+  </script>
+</body>
+</html>
