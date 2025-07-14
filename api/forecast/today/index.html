@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<title>Forecast API - Vandaag</title>
+</head>
+<body>
+<pre id="json">Generating forecast...</pre>
+<script>
+function getTodayKey() {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+}
+function getDailyHash(input) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash << 5) - hash + input.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+function getDeterministicAnswer() {
+  const hash = getDailyHash(getTodayKey());
+  return hash % 2 === 0 ? 'Ja' : 'Nee';
+}
+function generateSingleSetScore(answer) {
+  const base = getDailyHash(getTodayKey() + '_set_prediction');
+  const outcomes = [
+    [6,0], [6,1], [6,2], [6,3], [6,4],
+    [7,5], [7,6]
+  ];
+  const index = base % outcomes.length;
+  let [scoreTeam1, scoreTeam2] = outcomes[index];
+  const pijkeJasperWin = (answer === 'Ja');
+  const scorePijkeJasper = pijkeJasperWin ? scoreTeam1 : scoreTeam2;
+  const scoreDaanKors = pijkeJasperWin ? scoreTeam2 : scoreTeam1;
+  let tiebreakDetails = null;
+  if ((scorePijkeJasper === 7 && scoreDaanKors === 6) ||
+      (scoreDaanKors === 7 && scorePijkeJasper === 6)) {
+    const tiebreakBase = getDailyHash(getTodayKey() + '_tiebreak_prediction');
+    const tiebreakPointsWinner = 7 + (tiebreakBase % 4);
+    let tiebreakPointsLoser;
+    if (tiebreakPointsWinner === 7) {
+      tiebreakPointsLoser = (tiebreakBase % 5);
+    } else {
+      tiebreakPointsLoser = tiebreakPointsWinner - 2;
+    }
+    tiebreakPointsLoser = Math.max(0, Math.min(tiebreakPointsLoser, tiebreakPointsWinner - 2));
+    tiebreakDetails = pijkeJasperWin
+      ? `${tiebreakPointsWinner}–${tiebreakPointsLoser}`
+      : `${tiebreakPointsLoser}–${tiebreakPointsWinner}`;
+  }
+  return { scoreA: scoreDaanKors, scoreB: scorePijkeJasper, tiebreak: tiebreakDetails };
+}
+function generatePrediction() {
+  const answer = getDeterministicAnswer();
+  const { scoreA, scoreB, tiebreak } = generateSingleSetScore(answer);
+  return { answer, scoreA, scoreB, tiebreak };
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const pre = document.getElementById('json');
+  pre.textContent = JSON.stringify(generatePrediction(), null, 2);
+});
+</script>
+</body>
+</html>
