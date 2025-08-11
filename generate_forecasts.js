@@ -30,7 +30,7 @@ function answerFor(date) {
 }
 
 // maak output map
-const outDir = path.join("website", "api", "forecast");
+const outDir = path.join("api", "forecast");
 fs.mkdirSync(outDir, { recursive: true });
 
 // vandaag in Amsterdam
