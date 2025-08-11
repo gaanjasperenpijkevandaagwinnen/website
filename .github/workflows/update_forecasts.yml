@@ -39,12 +39,12 @@ jobs:
           git status --porcelain || true
           echo
           echo "Mapinhoud:"
-          ls -la website/api/forecast || true
+          ls -la api/forecast || true
           echo
           echo "Bestanden:"
-          test -f website/api/forecast/today.json && cat website/api/forecast/today.json || echo "today.json ontbreekt"
+          test -f api/forecast/today.json && cat api/forecast/today.json || echo "today.json ontbreekt"
           echo
-          test -f website/api/forecast/tomorrow.json && cat website/api/forecast/tomorrow.json || echo "tomorrow.json ontbreekt"
+          test -f api/forecast/tomorrow.json && cat api/forecast/tomorrow.json || echo "tomorrow.json ontbreekt"
 
       - name: Commit en push als er wijzigingen zijn
         run: |
