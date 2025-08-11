@@ -2,18 +2,28 @@ name: Update forecasts
 
 on:
   schedule:
-    - cron: "0 * * * *"   # elk uur op minuut 0, UTC
-  workflow_dispatch:       # handmatig starten
+    - cron: "0 * * * *"      # elk uur
+    - cron: "0 22 * * *"     # rond middernacht Amsterdam in zomer
+    - cron: "0 23 * * *"     # rond middernacht Amsterdam in winter
+  workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: update-forecasts
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -23,14 +33,31 @@ jobs:
       - name: Generate forecasts
         run: node generate_forecasts.js
 
-      - name: Commit and push if changed
+      - name: Debug git status
         run: |
-          if git diff --quiet; then
+          echo "Status:"
+          git status --porcelain || true
+          echo
+          echo "Mapinhoud:"
+          ls -la website/api/forecast || true
+          echo
+          echo "Bestanden:"
+          test -f website/api/forecast/today.json && cat website/api/forecast/today.json || echo "today.json ontbreekt"
+          echo
+          test -f website/api/forecast/tomorrow.json && cat website/api/forecast/tomorrow.json || echo "tomorrow.json ontbreekt"
+
+      - name: Commit en push als er wijzigingen zijn
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # voeg nieuwe en gewijzigde bestanden toe
+          git add -A
+
+          # commit alleen als er staged wijzigingen zijn
+          if git diff --cached --quiet; then
             echo "Geen wijzigingen om te committen"
           else
-            git config --global user.name "GitHub Actions"
-            git config --global user.email "actions@github.com"
-            git add website/api/forecast/today.json website/api/forecast/tomorrow.json
-            git commit -m "Update forecasts Europe Amsterdam"
+            git commit -m "Voeg of update forecasts Europe Amsterdam"
             git push
           fi
