@@ -8,16 +8,27 @@
   <pre id="data"></pre>
   <script>
     (function() {
-      const now = new Date();
-      const dayOfWeek = now.getDay();
-      const hour = now.getHours();
-      const seed = dayOfWeek * 24 + hour;
-      const prediction = seed % 2 === 0 ? 'ja' : 'nee';
+      function getTodayKey() {
+        const today = new Date();
+        return today.toISOString().split('T')[0];
+      }
+
+      function getDailyHash(input) {
+        let hash = 0;
+        for (let i = 0; i < input.length; i++) {
+          hash = (hash << 5) - hash + input.charCodeAt(i);
+          hash |= 0;
+        }
+        return Math.abs(hash);
+      }
+
+      function getDeterministicAnswer() {
+        const hash = getDailyHash(getTodayKey());
+        return hash % 2 === 0 ? 'Ja' : 'Nee';
+      }
+
       const output = {
-        "vraag": "Gaan Jasper & Pijke winnen?",
-        "voorspelling": prediction,
-        "moment": "today",
-        "timestamp": now.toISOString()
+        "gaanjasperenpijkevandaagwinnen": getDeterministicAnswer()
       };
       document.getElementById('data').textContent = JSON.stringify(output, null, 2);
     })();
