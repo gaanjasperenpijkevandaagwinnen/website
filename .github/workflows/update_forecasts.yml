@@ -1,0 +1,36 @@
+name: Update forecasts
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # elk uur op minuut 0, UTC
+  workflow_dispatch:       # handmatig starten
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Generate forecasts
+        run: node generate_forecasts.js
+
+      - name: Commit and push if changed
+        run: |
+          if git diff --quiet; then
+            echo "Geen wijzigingen om te committen"
+          else
+            git config --global user.name "GitHub Actions"
+            git config --global user.email "actions@github.com"
+            git add website/api/forecast/today.json website/api/forecast/tomorrow.json
+            git commit -m "Update forecasts Europe Amsterdam"
+            git push
+          fi
